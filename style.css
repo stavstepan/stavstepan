@@ -1,0 +1,40 @@
+/* загрузка только первого слайда */
+/* Скрываем слайдер до инициализации */
+.main-banner-picture {
+
+        > *:not(:first-of-type) {
+            display: none !important;
+        }
+}
+
+/* После инициализации слайдера */
+.main-banner-picture.slick-initialized {
+            > *:not(:first-of-type) {
+            display: block;
+        }
+}
+
+.gallery-block-container {
+        > *:not(:first-of-type) {
+            display: none !important;
+        }
+}
+
+.gallery-block-container.slick-initialized {
+        > *:not(:first-of-type) {
+            display: block;
+        }
+}
+
+.interactive-pic {
+        > *:not(:first-of-type) {
+            display: none !important;
+        }
+}
+
+.interactive-pic.slick-initialized {
+        > *:not(:first-of-type) {
+            display: block;
+        }
+}
+
