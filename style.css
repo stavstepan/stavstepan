@@ -1,42 +1,19 @@
-/* загрузка только первого слайда */
-/* Скрываем слайдер до инициализации */
-.main-banner-picture {
-
-        > *:not(:first-of-type) {
-            display: none !important;
-        }
+ /* Скрываем слайдер до инициализации */
+.main-banner-picture > *:not(:first-of-type),
+.gallery-block-container > *:not(:first-of-type),
+.interactive-pic > *:not(:first-of-type),
+.slider-constructor-pictures > *:not(:first-of-type) {
+    display: none !important;
 }
 
 /* После инициализации слайдера */
-.main-banner-picture.slick-initialized {
-            > *:not(:first-of-type) {
-            display: block;
-        }
+.main-banner-picture.slick-initialized > *:not(:first-of-type),
+.gallery-block-container.slick-initialized > *:not(:first-of-type),
+.interactive-pic.slick-initialized > *:not(:first-of-type),
+.slider-constructor-pictures.slick-initialized > *:not(:first-of-type) {
+    display: block;
 }
 
-.gallery-block-container {
-        > *:not(:first-of-type) {
-            display: none !important;
-        }
-}
-
-.gallery-block-container.slick-initialized {
-        > *:not(:first-of-type) {
-            display: block;
-        }
-}
-
-.interactive-pic {
-        > *:not(:first-of-type) {
-            display: none !important;
-        }
-}
-
-.interactive-pic.slick-initialized {
-        > *:not(:first-of-type) {
-            display: block;
-        }
-}
 
 /* стили для управления видимостью на разных экранах */
 
