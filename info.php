@@ -1,3 +1,4 @@
+<?php
 //запись в лог
 function writeToLog($data, $logFile = "/logs/event_log.txt") {
 $date = date("Y-m-d H:i:s"); // Получаем текущее время
