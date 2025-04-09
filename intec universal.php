@@ -1,5 +1,5 @@
 <?php
-
+//---------------------------------------------------------------
 use Bitrix\Main\Loader;
 use Bitrix\Main\EventManager;
 
@@ -29,7 +29,8 @@ function writeToLog($data, $logFile = "/logs/event_log.txt") {
 
     file_put_contents($filePath, $logMessage, FILE_APPEND | LOCK_EX);
 }
-
+//---------------------------------------------------------------------------------------------
+//если тебе нужен колличественный учет товаров при оформлении заказа, что бы товар уходил с остатков при изменении его статуса на "отгружен" и если нужно его вернуть обратно
 EventManager::getInstance()->addEventHandler("main", "OnBeforeProlog", "CheckOrderStatusChange");
 
 function CheckOrderStatusChange()
@@ -184,3 +185,82 @@ function UpdateProductQuantity($productId, $quantity, $catalogId, $restore = fal
         }
     }
 }
+//----------------------------------------------------------------------------------------------------------------
+//если надо добавить польовательские свойства в шаблон отправки письма, к примеру артикул товара при оформлении заказа
+
+
+
+Loader::includeModule('iblock');
+
+class CEventLogger
+{
+    protected static function BuildCustomOrderTable($arFields)
+    {
+        $orderId = (int)$arFields["ORDER_ID"];
+
+        // Запросим товары из заказа по ID заказа
+        $connection = \Bitrix\Main\Application::getConnection();
+        $query = "SELECT * FROM startshop_order_items WHERE `ORDER` = " . $orderId;
+        $result = $connection->query($query);
+
+        $products = [];
+        $productIds = [];
+
+        while ($item = $result->fetch()) {
+            $productId = (int)$item["ITEM"];
+            $quantity = (int)$item["QUANTITY"];
+
+            $products[$productId] = [
+                'QUANTITY' => $quantity
+            ];
+
+            $productIds[] = $productId;
+        }
+
+        // Получаем названия и артикулы товаров из инфоблока 15
+        $res = CIBlockElement::GetList(
+            [],
+            [
+                'IBLOCK_ID' => 15,
+                'ID' => $productIds
+            ],
+            false,
+            false,
+            ['ID', 'NAME', 'PROPERTY_ARTICLE_EXCEL']
+        );
+
+        while ($item = $res->GetNext()) {
+            $productId = (int)$item['ID'];
+            $products[$productId]['NAME'] = $item['NAME'];
+            $products[$productId]['ARTICLE'] = $item['PROPERTY_ARTICLE_EXCEL_VALUE'];
+        }
+
+        // Формируем таблицу
+        $html = '';
+        foreach ($products as $productId => $data) {
+            $name = htmlspecialchars($data['NAME'] ?? 'Неизвестно');
+            $quantity = $data['QUANTITY'] ?? 0;
+            $article = htmlspecialchars($data['ARTICLE'] ?? 'Не указан');
+
+            $html .= "<tr>
+                <td>{$name}</td>
+                <td>{$quantity}</td>
+                <td>{$article}</td>
+            </tr>";
+        }
+
+        return $html;
+    }
+
+    public static function OnBeforeEventAdd(&$event, &$lid, &$arFields)
+    {
+        if ($event === 'STARTSHOP_NEW_ORDER_ADMIN') {
+            $arFields['ORDER_TABLE_ITEMS'] = self::BuildCustomOrderTable($arFields);
+        }
+    }
+}
+
+AddEventHandler("main", "OnBeforeEventAdd", array("CEventLogger", "OnBeforeEventAdd"));
+
+
+//----------------------------------------------------------------------------------------------------
