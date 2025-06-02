@@ -100,3 +100,14 @@ if ($shouldRedirect) {
     }
 }
 
+//---------------------------------------------------------------------------------------------------------------------
+
+//версификация для загрузки css и js 
+
+function assetWithVersion($path) {
+    $fullPath = $_SERVER['DOCUMENT_ROOT'] . $path;
+    if (file_exists($fullPath)) {
+        return $path . '?v=' . filemtime($fullPath);
+    }
+    return $path;
+}
