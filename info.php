@@ -111,3 +111,104 @@ function assetWithVersion($path) {
     }
     return $path;
 }
+
+
+//кэширование контактов организации
+use Bitrix\Main\Loader;
+Loader::includeModule('iblock');
+
+$cache = \Bitrix\Main\Data\Cache::createInstance();
+
+if ($cache->initCache(43200, 'contact_info_element_67')) {
+    $vars = $cache->getVars();
+    $GLOBALS['CONTACT_DATA'] = $vars['DATA'];
+} elseif ($cache->startDataCache()) {
+
+    $contactData = [];
+    $elementId = 67;
+    $iblockId = 6;
+
+    $res = CIBlockElement::GetList(
+        [],
+        [
+            'IBLOCK_ID' => $iblockId,
+            'ID' => $elementId,
+            'ACTIVE' => 'Y'
+        ],
+        false,
+        false,
+        [
+            'ID',
+            'NAME',
+            'PROPERTY_ADDRESS',
+            'PROPERTY_PHONE_MAIN',
+            'PROPERTY_SCHEDULE',
+            'PROPERTY_MAP_COORD',
+            // без PROPERTY_EMPLOYEES_LIST_CONTACTS, потому что его отдельно
+        ]
+    );
+
+    if ($item = $res->GetNext()) {
+        $contactData = [
+            'ADDRESS' => $item['PROPERTY_ADDRESS_VALUE'],
+            'PHONE_MAIN' => $item['PROPERTY_PHONE_MAIN_VALUE'],
+            'SCHEDULE' => $item['PROPERTY_SCHEDULE_VALUE'],
+            'EMPLOYEES_LIST_CONTACTS' => [],
+            'MAP_COORD' => $item['PROPERTY_MAP_COORD_VALUE']
+        ];
+
+        // Теперь тянем множественное поле отдельно
+        $propertyRes = CIBlockElement::GetProperty(
+            $iblockId,
+            $elementId,
+            [],
+            ['CODE' => 'EMPLOYEES_LIST_CONTACTS']
+        );
+
+        while ($prop = $propertyRes->Fetch()) {
+            if ($prop['VALUE']) {
+                $contactData['EMPLOYEES_LIST_CONTACTS'][] = (int)$prop['VALUE'];
+            }
+        }
+
+        $GLOBALS['CONTACT_DATA'] = $contactData;
+        $cache->endDataCache(['DATA' => $contactData]);
+    } else {
+        $GLOBALS['CONTACT_DATA'] = [];
+        $cache->abortDataCache();
+    }
+}
+
+//----------------------------------------------------------------------------------------------------------------------------------------------------
+function debugConsole($array){
+    global $USER;
+    if($USER->IsAdmin()) {
+        echo "<script>console.log(" . json_encode($array, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . ");</script>";
+    }
+}
+
+//----------------------------------------------------------------------------------------------------------------------------------------------------
+
+//првоерка координат
+function getSafeCoordinates($targetCoords, $defaultCoords = [37.617644, 55.755819]) {
+    if (!is_string($targetCoords)) {
+        return $defaultCoords;
+    }
+
+    $parts = array_map('trim', explode(',', $targetCoords));
+
+    if (count($parts) !== 2) {
+        return $defaultCoords;
+    }
+
+    $lng = floatval($parts[0]);
+    $lat = floatval($parts[1]);
+
+    $isValidLat = is_finite($lat) && $lat >= -90 && $lat <= 90;
+    $isValidLng = is_finite($lng) && $lng >= -180 && $lng <= 180;
+
+    return ($isValidLat && $isValidLng) ? [$lng, $lat] : $defaultCoords;
+}
+
+
+
