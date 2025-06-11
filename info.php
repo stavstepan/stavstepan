@@ -210,5 +210,87 @@ function getSafeCoordinates($targetCoords, $defaultCoords = [37.617644, 55.75581
     return ($isValidLat && $isValidLng) ? [$lng, $lat] : $defaultCoords;
 }
 
+//-----------------------------------------------------------------------------------------------------------------------------------------------------
+// универсальная функция для получения свойств элементов инфоблока
+
+function getElementProperty($iblockId, $elementId, $propertyCode, $cacheTime = 43200) {
+    use Bitrix\Main\Loader;
+    
+    Loader::includeModule('iblock');
+    
+    $cache = \Bitrix\Main\Data\Cache::createInstance();
+    $cacheId = "element_property_{$iblockId}_{$elementId}_{$propertyCode}";
+    
+    if ($cache->initCache($cacheTime, $cacheId)) {
+        $vars = $cache->getVars();
+        return $vars['PROPERTY_VALUE'];
+    } elseif ($cache->startDataCache()) {
+        $propertyValue = null;
+        
+        // Сначала пробуем получить через GetList (для простых свойств)
+        $res = CIBlockElement::GetList(
+            [],
+            [
+                'IBLOCK_ID' => $iblockId,
+                'ID' => $elementId,
+                'ACTIVE' => 'Y'
+            ],
+            false,
+            false,
+            ['ID', 'PROPERTY_' . $propertyCode]
+        );
+        
+        if ($item = $res->GetNext()) {
+            $propertyKey = 'PROPERTY_' . $propertyCode . '_VALUE';
+            
+            // Если свойство получено через GetList
+            if (isset($item[$propertyKey])) {
+                $propertyValue = $item[$propertyKey];
+            } else {
+                // Если не получено (возможно множественное), используем GetProperty
+                $propertyRes = CIBlockElement::GetProperty(
+                    $iblockId,
+                    $elementId,
+                    [],
+                    ['CODE' => $propertyCode]
+                );
+                
+                $values = [];
+                while ($prop = $propertyRes->Fetch()) {
+                    if ($prop['VALUE']) {
+                        // Приводим к нужному типу в зависимости от типа свойства
+                        if ($prop['PROPERTY_TYPE'] == 'N') {
+                            $values[] = (int)$prop['VALUE'];
+                        } else {
+                            $values[] = $prop['VALUE'];
+                        }
+                    }
+                }
+                
+                // Если множественное свойство
+                if ($prop['MULTIPLE'] == 'Y') {
+                    $propertyValue = $values;
+                } else {
+                    // Если одиночное, но получали через GetProperty
+                    $propertyValue = !empty($values) ? $values[0] : null;
+                }
+            }
+            
+            $cache->endDataCache(['PROPERTY_VALUE' => $propertyValue]);
+        } else {
+            $cache->abortDataCache();
+        }
+        
+        return $propertyValue;
+    }
+    
+    return null;
+}
+
+// Примеры использования:
+// $address = getElementProperty(6, 67, 'ADDRESS');
+// $phone = getElementProperty(6, 67, 'PHONE_MAIN');
+// $employees = getElementProperty(6, 67, 'EMPLOYEES_LIST_CONTACTS'); // вернет массив для множественного
+// $schedule = getElementProperty(6, 67, 'SCHEDULE', 86400); // с кастомным временем кэша
 
 
