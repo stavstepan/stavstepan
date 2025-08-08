@@ -205,3 +205,64 @@ class UserFieldStoreMultiselect extends EnumType
 if (defined('LANGUAGE_ID') && LANGUAGE_ID === 'ru') {
     $MESS['USER_TYPE_ENUM_REQUIRED'] = 'Поле обязательно для заполнения';
 }
+
+
+/* ===== рабочий вариант ===== https://dzen.ru/a/ZH4ZyTmO5hTctC9C */
+
+<?php
+
+$eventManager = \Bitrix\Main\EventManager::getInstance();
+$eventManager->addEventHandler(
+"main",
+"OnUserTypeBuildList",
+['UserFieldStoreId','getUserTypeDescription']
+);
+
+class UserFieldStoreId extends \Bitrix\Main\UserField\Types\EnumType
+{
+public const USER_TYPE_ID = 'user_field_store_id';
+
+/**
+* @return array
+*/
+public static function getDescription(): array
+{
+return [
+'DESCRIPTION' => 'Выбор склада',
+'BASE_TYPE' => CUserTypeManager::BASE_TYPE_ENUM,
+];
+}
+
+/**
+* @param array $userField
+* @return bool|\CDBResult
+*/
+public static function getList(array $userField)
+{
+
+if (!\Bitrix\Main\Loader::includeModule('catalog')) {
+return false;
+}
+
+$arReturn = [];
+
+$dbr = \Bitrix\Catalog\StoreTable::getList([
+'order' => [
+'ID' => 'ASC'
+],
+'select' => [
+'ID', 'TITLE'
+]
+]);
+while ($ar = $dbr->Fetch()) {
+$arReturn[] = [
+'ID' => $ar['ID'],
+'VALUE' => '[' . $ar['ID'] . '] ' . $ar['TITLE']
+];
+}
+
+$res = new \CDBResult;
+$res->InitFromArray($arReturn);
+return $res;
+}
+}
